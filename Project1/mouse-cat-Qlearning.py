@@ -30,7 +30,7 @@ alpha = 0.1        # Learning rate
 gamma = 0.95       # Discount factor, increased to value future rewards more
 epsilon = 1.0      # Exploration rate
 epsilon_min = 0.01
-epsilon_decay = 0.995
+epsilon_decay = 0.999
 num_episodes = 10000  # Increased for deeper learning
 max_steps = 300
 
@@ -291,5 +291,5 @@ for step in range(max_steps):
     if captured:
         print("The mouse was captured by the cat!")
         break
-    else:
-        print("The mouse did not reach the food because the cat kept it away!")
+else:
+    print("The mouse did not reach the food because the cat kept it away!")
