@@ -1,10 +1,10 @@
 import numpy as np
 import random
 
-# Definir el laberinto
-# 0: Espacio libre
-# 1: Pared
-# 2: Comida
+# Define the maze
+# 0: Free space
+# 1: Wall
+# 2: Food
 
 maze = np.array([
     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # 0
@@ -20,33 +20,33 @@ maze = np.array([
     [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],  # 10
 ])
 
-# Definir posiciones
+# Define positions
 mouse_start = (0, 0)
 food_pos = (4, 4)
-cat_start = (10, 14)  # Posición inicial del gato, más cercana al objetivo del ratón
+cat_start = (10, 14)  # Initial position of the cat, closer to the mouse's goal
 
-# Parámetros de Q-Learning
-alpha = 0.1        # Tasa de aprendizaje
-gamma = 0.95       # Factor de descuento, incrementado para valorar más las recompensas futuras
-epsilon = 1.0      # Tasa de exploración
+# Q-Learning parameters
+alpha = 0.1        # Learning rate
+gamma = 0.95       # Discount factor, increased to value future rewards more
+epsilon = 1.0      # Exploration rate
 epsilon_min = 0.01
 epsilon_decay = 0.995
-num_episodes = 10000  # Aumentado para un aprendizaje más profundo
+num_episodes = 10000  # Increased for deeper learning
 max_steps = 300
 
-# Parámetros de ventaja para el gato
-cat_extra_move_prob = 0.3  # Probabilidad de que el gato realice un movimiento extra
+# Advantage parameters for the cat
+cat_extra_move_prob = 0.3  # Probability that the cat makes an extra move
 
-# Acciones: arriba, abajo, izquierda, derecha
-actions = ['arriba', 'abajo', 'izquierda', 'derecha']
+# Actions: up, down, left, right
+actions = ['up', 'down', 'left', 'right']
 action_dict = {
-    0: (-1, 0),  # Arriba
-    1: (1, 0),   # Abajo
-    2: (0, -1),  # Izquierda
-    3: (0, 1),   # Derecha
+    0: (-1, 0),  # Up
+    1: (1, 0),   # Down
+    2: (0, -1),  # Left
+    3: (0, 1),   # Right
 }
 
-# Inicializar la tabla Q
+# Initialize the Q-table
 maze_height, maze_width = maze.shape
 state_space_size = maze_height * maze_width * maze_height * maze_width
 action_space_size = len(actions)
@@ -69,17 +69,17 @@ def get_possible_actions(position):
 
 def move_cat(cat_pos, mouse_pos):
     """
-    Determina la mejor acción para el gato para reducir la distancia al ratón.
-    Utiliza la distancia de Manhattan para decidir.
+    Determines the best action for the cat to reduce the distance to the mouse.
+    Uses the Manhattan distance to decide.
     """
     possible_actions = get_possible_actions(cat_pos)
     if not possible_actions:
-        return cat_pos  # El gato no puede moverse
+        return cat_pos  # The cat cannot move
 
-    # Calcular la distancia actual al ratón
+    # Calculate the current distance to the mouse
     current_distance = abs(cat_pos[0] - mouse_pos[0]) + abs(cat_pos[1] - mouse_pos[1])
 
-    # Evaluar todas las acciones posibles y elegir las que reduzcan la distancia
+    # Evaluate all possible actions and choose those that reduce the distance
     best_actions = []
     min_distance = current_distance
     for action in possible_actions:
@@ -97,7 +97,7 @@ def move_cat(cat_pos, mouse_pos):
         move = action_dict[chosen_action]
         return (cat_pos[0] + move[0], cat_pos[1] + move[1])
     else:
-        # No hay acciones que reduzcan la distancia, moverse aleatoriamente
+        # No actions reduce the distance, move randomly
         chosen_action = random.choice(possible_actions)
         move = action_dict[chosen_action]
         return (cat_pos[0] + move[0], cat_pos[1] + move[1])
@@ -106,12 +106,12 @@ for episode in range(num_episodes):
     mouse_pos = mouse_start
     cat_pos = cat_start
     total_reward = 0
-    done = False  # Asegurar que 'done' está definido al inicio de cada episodio
+    done = False  # Ensure 'done' is defined at the start of each episode
 
     for step in range(max_steps):
         state_idx = state_to_index(mouse_pos, cat_pos)
 
-        # Selección de acción usando ε-greedy
+        # Action selection using ε-greedy
         if random.uniform(0,1) < epsilon:
             possible = get_possible_actions(mouse_pos)
             if possible:
@@ -121,71 +121,71 @@ for episode in range(num_episodes):
         else:
             action = np.argmax(Q_table[state_idx])
 
-        # Guardar posiciones anteriores
+        # Save previous positions
         prev_mouse_pos = mouse_pos
         prev_cat_pos = cat_pos
 
-        # Tomar acción del ratón
+        # Take the mouse's action
         move = action_dict[action]
         new_mouse_pos = (mouse_pos[0] + move[0], mouse_pos[1] + move[1])
 
         if not is_valid(new_mouse_pos):
-            reward = -10  # Movimiento inválido
-            new_mouse_pos = mouse_pos  # Quedarse en el lugar
-            # 'done' se mantiene en False
+            reward = -10  # Invalid move
+            new_mouse_pos = mouse_pos  # Stay in place
+            # 'done' remains False
         elif new_mouse_pos == food_pos:
-            reward = 100  # Alcanza la comida
+            reward = 100  # Reaches the food
             done = True
         else:
-            # Penalización adicional por proximidad al gato
+            # Additional penalty for proximity to the cat
             distance_to_cat = abs(new_mouse_pos[0] - cat_pos[0]) + abs(new_mouse_pos[1] - cat_pos[1])
             if distance_to_cat <= 2:
-                reward = -5  # Penalización por estar cerca del gato
+                reward = -5  # Penalty for being close to the cat
             else:
-                reward = -1  # Movimiento normal
+                reward = -1  # Normal move
 
-        # Mover al gato con ventaja de velocidad
-        # Primero, mover una vez
+        # Move the cat with speed advantage
+        # First, move once
         new_cat_pos = move_cat(cat_pos, new_mouse_pos)
 
-        # Verificar captura después del primer movimiento
+        # Check for capture after the first move
         captured = False
         if new_cat_pos == new_mouse_pos:
             captured = True
         elif new_cat_pos == prev_mouse_pos and new_mouse_pos == prev_cat_pos:
             captured = True
 
-        # Si capturado, asignar recompensa y finalizar
+        # If captured, assign reward and finish
         if captured:
-            reward = -100  # Capturado por el gato
+            reward = -100  # Captured by the cat
             done = True
         else:
-            # Decidir si el gato hace un movimiento extra
+            # Decide if the cat makes an extra move
             if random.uniform(0,1) < cat_extra_move_prob:
                 temp_cat_pos = new_cat_pos
                 temp_prev_cat_pos = new_cat_pos
                 temp_prev_mouse_pos = new_mouse_pos
 
-                # Movimiento extra
+                # Extra move
                 new_cat_pos = move_cat(temp_cat_pos, new_mouse_pos)
 
-                # Verificar captura después del movimiento extra
+                # Check for capture after the extra move
                 if new_cat_pos == new_mouse_pos:
                     captured = True
                 elif new_cat_pos == temp_prev_mouse_pos and new_mouse_pos == temp_prev_cat_pos:
                     captured = True
 
                 if captured:
-                    reward = -100  # Capturado por el gato
+                    reward = -100  # Captured by the cat
                     done = True
 
-        # Obtener el índice del nuevo estado del ratón y el gato
+        # Get the index of the new state for the mouse and the cat
         new_state_idx = state_to_index(new_mouse_pos, new_cat_pos)
 
-        # Actualización Q-learning
+        # Q-learning update
         Q_table[state_idx, action] += alpha * (reward + gamma * np.max(Q_table[new_state_idx]) - Q_table[state_idx, action])
 
-        # Actualizar posiciones
+        # Update positions
         mouse_pos = new_mouse_pos
         cat_pos = new_cat_pos
         total_reward += reward
@@ -193,18 +193,18 @@ for episode in range(num_episodes):
         if done:
             break
 
-    # Decaimiento de epsilon
+    # Decay epsilon
     if epsilon > epsilon_min:
         epsilon *= epsilon_decay
 
-    # Imprimir progreso cada 1000 episodios
+    # Print progress every 1000 episodes
     if (episode+1) % 1000 == 0:
-        print(f"Episodio {episode+1}: Recompensa Total: {total_reward}, Epsilon: {epsilon:.4f}")
+        print(f"Episode {episode+1}: Total Reward: {total_reward}, Epsilon: {epsilon:.4f}")
 
-# Probar el ratón entrenado
+# Test the trained mouse
 def print_maze(mouse_position, cat_position):
     display = maze.copy().astype(object)
-    # Reiniciar el display
+    # Reset the display
     for i in range(display.shape[0]):
         for j in range(display.shape[1]):
             if maze[i, j] == 1:
@@ -213,26 +213,26 @@ def print_maze(mouse_position, cat_position):
                 display[i, j] = 'F'
             else:
                 display[i, j] = '.'
-    # Colocar al ratón y al gato
+    # Place the mouse and the cat
     mx, my = mouse_position
     cx, cy = cat_position
-    # Evitar que el ratón y el gato estén en la misma posición en la visualización
+    # Avoid having the mouse and the cat in the same position in the visualization
     if (mx, my) == (cx, cy):
-        display[mx, my] = 'X'  # Indica que el gato ha capturado al ratón
+        display[mx, my] = 'X'  # Indicates that the cat has captured the mouse
     else:
         display[mx, my] = 'M'
         display[cx, cy] = 'C'
-    # Imprimir el laberinto
+    # Print the maze
     for row in display:
         print(' '.join(row))
     print()
 
-# Restablecer parámetros para prueba
+# Reset parameters for testing
 mouse_pos = mouse_start
 cat_pos = cat_start
-epsilon = 0  # Sin exploración
+epsilon = 0  # No exploration
 
-print("Camino del Ratón Entrenado:")
+print("Trained Mouse's Path:")
 for step in range(max_steps):
     state_idx = state_to_index(mouse_pos, cat_pos)
     possible = get_possible_actions(mouse_pos)
@@ -244,50 +244,52 @@ for step in range(max_steps):
     new_mouse_pos = (mouse_pos[0] + move[0], mouse_pos[1] + move[1])
 
     if not is_valid(new_mouse_pos):
-        new_mouse_pos = mouse_pos  # Quedarse en el lugar
+        new_mouse_pos = mouse_pos  # Stay in place
 
-    # Guardar posiciones anteriores para detectar cruces
+    # Save previous positions to detect crossings
     prev_mouse_pos = mouse_pos
     prev_cat_pos = cat_pos
 
-    # Tomar acción del ratón
+    # Take the mouse's action
     mouse_pos = new_mouse_pos
 
-    # Mover al gato con ventaja de velocidad
-    # Primero, mover una vez
+    # Move the cat with speed advantage
+    # First, move once
     new_cat_pos = move_cat(cat_pos, new_mouse_pos)
 
-    # Verificar captura después del primer movimiento
+    # Check for capture after the first move
     captured = False
     if new_cat_pos == new_mouse_pos:
         captured = True
     elif new_cat_pos == prev_mouse_pos and new_mouse_pos == prev_cat_pos:
         captured = True
 
-    # Si no capturado, decidir si el gato hace un movimiento extra
+    # If not captured, decide if the cat makes an extra move
     if not captured and random.uniform(0,1) < cat_extra_move_prob:
         temp_cat_pos = new_cat_pos
         temp_prev_cat_pos = new_cat_pos
         temp_prev_mouse_pos = new_mouse_pos
 
-        # Movimiento extra
+        # Extra move
         new_cat_pos = move_cat(temp_cat_pos, new_mouse_pos)
 
-        # Verificar captura después del movimiento extra
+        # Check for capture after the extra move
         if new_cat_pos == new_mouse_pos:
             captured = True
         elif new_cat_pos == temp_prev_mouse_pos and new_mouse_pos == temp_prev_cat_pos:
             captured = True
 
-    # Actualizar posiciones del gato
+    # Update the cat's positions
     cat_pos = new_cat_pos
 
     print_maze(new_mouse_pos, new_cat_pos)
 
-    # Verificar condiciones de fin
+    # Check end conditions
     if new_mouse_pos == food_pos:
-        print("¡El ratón ha llegado a la comida!")
+        print("The mouse has reached the food!")
         break
     if captured:
-        print("¡El ratón fue capturado por el gato!")
+        print("The mouse was captured by the cat!")
         break
+    else:
+        print("The mouse did not reach the food because the cat kept it away!")
